@@ -24,6 +24,8 @@
 
   // DOM references (reset button)
   const resetBtn = document.getElementById('reset-btn');
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebarEl = document.getElementById('sidebar');
 
   // State
   let draggedEl = null;
@@ -34,6 +36,11 @@
   let sidebarDragClone = null;
   let sidebarDragElementId = null;
   let sidebarDragged = false;
+
+  // Physics controller
+  const physics = new AlchemyPhysics.PhysicsController(workspace, function (id) {
+    return game.getElement(id);
+  });
 
   // ===== Initialization =====
   function init() {
@@ -113,10 +120,15 @@
     // Remove button
     div.querySelector('.remove-btn').addEventListener('click', function (e) {
       e.stopPropagation();
+      physics.removeBody(div);
       div.remove();
     });
 
     workspace.appendChild(div);
+
+    // Register with physics
+    physics.addBody(div);
+
     return div;
   }
 
@@ -178,6 +190,7 @@
 
     // Clear workspace
     clearBtn.addEventListener('click', function () {
+      physics.clearAll();
       workspace.innerHTML = '';
     });
 
@@ -185,6 +198,7 @@
     resetBtn.addEventListener('click', function () {
       if (confirm('Reset all progress? This will remove all discovered elements.')) {
         game.reset();
+        physics.clearAll();
         workspace.innerHTML = '';
         updateDiscoveredCount();
         renderSidebar();
@@ -200,6 +214,11 @@
     hintClose.addEventListener('click', function () {
       hintOverlay.classList.add('hidden');
       localStorage.setItem('alchemy-hint-seen', '1');
+    });
+
+    // Sidebar toggle for mobile
+    sidebarToggle.addEventListener('click', function () {
+      sidebarEl.classList.toggle('collapsed');
     });
   }
 
@@ -265,6 +284,9 @@
     draggedEl.classList.add('dragging');
     draggedEl.setPointerCapture(e.pointerId);
 
+    // Pause physics while dragging
+    physics.setDragging(el, true);
+
     var rect = el.getBoundingClientRect();
     dragOffsetX = e.clientX - rect.left;
     dragOffsetY = e.clientY - rect.top;
@@ -300,6 +322,9 @@
     if (target) {
       target.classList.remove('highlight');
       tryCombine(draggedEl, target);
+    } else {
+      // Resume physics after drop
+      physics.setDragging(draggedEl, false);
     }
 
     draggedEl.style.zIndex = '';
@@ -350,7 +375,9 @@
       var mx = ((r1.left + r2.left) / 2) - wsRect.left;
       var my = ((r1.top + r2.top) / 2) - wsRect.top;
 
-      // Remove the two elements
+      // Remove the two elements (and their physics bodies)
+      physics.removeBody(el1);
+      physics.removeBody(el2);
       el1.remove();
       el2.remove();
 

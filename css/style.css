@@ -374,6 +374,41 @@ body {
   opacity: 0.9;
 }
 
+/* ===== Physics Element Styles ===== */
+.workspace-element.physics-solid {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.workspace-element.physics-fluid {
+  border-radius: 16px;
+  border: 1px solid rgba(100, 180, 255, 0.3);
+  background: linear-gradient(135deg, var(--bg-card), rgba(30, 80, 140, 0.8));
+}
+
+.workspace-element.physics-gas {
+  opacity: 0.85;
+  border-radius: 20px;
+  border: 1px dashed rgba(200, 200, 255, 0.25);
+  background: linear-gradient(135deg, rgba(15, 52, 96, 0.6), rgba(30, 30, 60, 0.6));
+}
+
+/* ===== Sidebar Toggle Button ===== */
+#sidebar-toggle {
+  display: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 1.4rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 20;
+  line-height: 1;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   :root {
@@ -388,6 +423,15 @@ body {
   .workspace-element {
     font-size: 0.85rem;
     padding: 6px 10px;
+  }
+
+  #sidebar-toggle {
+    display: block;
+  }
+
+  /* Show remove button always on touch devices */
+  .workspace-element .remove-btn {
+    display: flex;
   }
 }
 
@@ -406,9 +450,67 @@ body {
     height: 40vh;
     border-right: none;
     border-bottom: 1px solid var(--border);
+    position: relative;
+    transition: height 0.3s ease;
+  }
+
+  #sidebar.collapsed {
+    height: 48px;
+    min-height: 48px;
+    overflow: hidden;
+  }
+
+  #sidebar.collapsed #element-list,
+  #sidebar.collapsed #stats,
+  #sidebar.collapsed #search-bar,
+  #sidebar.collapsed #category-filter {
+    display: none;
+  }
+
+  #sidebar-toggle {
+    display: block;
+  }
+
+  #sidebar-header {
+    position: relative;
+  }
+
+  #sidebar-header h1 {
+    font-size: 1.2rem;
   }
 
   #workspace {
     height: 60vh;
+  }
+
+  #clear-btn, #reset-btn {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+
+  #reset-btn {
+    right: 110px;
+  }
+
+  /* Larger touch targets for element cards on mobile */
+  .element-card {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    min-height: 44px;
+  }
+
+  .workspace-element {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  /* Always show remove button on mobile */
+  .workspace-element .remove-btn {
+    display: flex;
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+    top: -8px;
+    right: -8px;
   }
 }
