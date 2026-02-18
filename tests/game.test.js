@@ -127,9 +127,9 @@ test('should mark element as not new on second combination', function () {
 
 test('should return null result for invalid combination', function () {
   const game = new AlchemyGame(ELEMENTS, RECIPES, STARTING_ELEMENTS);
-  const result2 = game.combine('nonexistent1', 'nonexistent2');
-  assert.strictEqual(result2.result, null);
-  assert.strictEqual(result2.isNew, false);
+  const result = game.combine('nonexistent1', 'nonexistent2');
+  assert.strictEqual(result.result, null);
+  assert.strictEqual(result.isNew, false);
 });
 
 test('should combine earth + water = mud', function () {
