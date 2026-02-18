@@ -101,7 +101,7 @@
 
   function updateDiscoveredCount() {
     discoveredCountEl.textContent = game.discoveredCount;
-    var pct = (game.discoveredCount / game.totalElements) * 100;
+    const pct = (game.discoveredCount / game.totalElements) * 100;
     progressBar.style.width = pct + '%';
   }
 
