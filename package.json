@@ -1,0 +1,24 @@
+{
+  "name": "alchemy",
+  "version": "1.0.0",
+  "description": "A browser-based element crafting game inspired by Little Alchemy 2. Discover **748 elements** by combining them together, starting from just four basic elements: Water, Fire, Earth, and Air.",
+  "scripts": {
+    "dev": "serve .",
+    "test": "node tests/game.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/colesmailbox96-tech/Alchemy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/colesmailbox96-tech/Alchemy/issues"
+  },
+  "homepage": "https://github.com/colesmailbox96-tech/Alchemy#readme",
+  "devDependencies": {
+    "serve": "^14.2.5"
+  }
+}
