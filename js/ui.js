@@ -101,7 +101,24 @@
 
   function updateDiscoveredCount() {
     discoveredCountEl.textContent = game.discoveredCount;
-    const pct = (game.discoveredCount / game.totalElements) * 100;
+
+    const total = game.totalElements;
+
+    // Guard against invalid or zero total elements to avoid NaN/Infinity widths
+    if (!Number.isFinite(total) || total <= 0) {
+      progressBar.style.width = '0%';
+      return;
+    }
+
+    let pct = (game.discoveredCount / total) * 100;
+
+    // Handle any unexpected non-finite result
+    if (!Number.isFinite(pct)) {
+      pct = 0;
+    }
+
+    // Clamp percentage to [0, 100] to avoid layout issues
+    pct = Math.max(0, Math.min(100, pct));
     progressBar.style.width = pct + '%';
   }
 
