@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alchemy – Element Crafting Game</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Sidebar: discovered elements -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <h1>🧪 Alchemy</h1>
+      <div id="stats">
+        <span id="discovered-count">4</span> / <span id="total-count">0</span> discovered
+      </div>
+      <div id="search-bar">
+        <input type="text" id="search-input" placeholder="Search elements..." autocomplete="off">
+      </div>
+      <div id="category-filter">
+        <select id="category-select">
+          <option value="all">All Categories</option>
+        </select>
+      </div>
+    </div>
+    <div id="element-list"></div>
+  </aside>
+
+  <!-- Main workspace -->
+  <main id="workspace">
+    <div id="workspace-area"></div>
+    <div id="clear-btn" title="Clear workspace">🗑️ Clear</div>
+  </main>
+
+  <!-- Discovery popup -->
+  <div id="discovery-popup" class="hidden">
+    <div id="discovery-content">
+      <div id="discovery-emoji"></div>
+      <div id="discovery-name"></div>
+      <div id="discovery-subtitle">New element discovered!</div>
+    </div>
+  </div>
+
+  <!-- Hint overlay -->
+  <div id="hint-overlay" class="hidden">
+    <p>Drag elements from the sidebar onto the workspace.<br>
+    Combine two elements by dropping one onto another!</p>
+    <button id="hint-close">Got it!</button>
+  </div>
+
+  <script src="data/elements.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
