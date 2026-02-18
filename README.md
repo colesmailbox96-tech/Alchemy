@@ -2,9 +2,18 @@
 
 A browser-based element crafting game inspired by Little Alchemy 2. Discover **748 elements** by combining them together, starting from just four basic elements: Water, Fire, Earth, and Air.
 
+## Getting Started
+
+```bash
+npm install
+npm run dev
+```
+
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
+
 ## How to Play
 
-1. **Open `index.html`** in any modern web browser
+1. **Open the app** in your browser (via `npm run dev` or by opening `index.html` directly)
 2. **Drag elements** from the sidebar onto the workspace
 3. **Combine elements** by dragging one workspace element onto another
 4. **Discover new elements** — they appear in the sidebar when found
@@ -44,13 +53,14 @@ A browser-based element crafting game inspired by Little Alchemy 2. Discover **7
 ## Running Tests
 
 ```bash
-node tests/game.test.js
+npm test
 ```
 
 ## Project Structure
 
 ```
 ├── index.html          # Main HTML page
+├── package.json        # Dev dependencies and scripts
 ├── css/style.css       # Game styling
 ├── js/game.js          # Game engine (combination logic, persistence)
 ├── js/ui.js            # UI controller (drag-and-drop, rendering)
