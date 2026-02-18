@@ -38,7 +38,7 @@
   let sidebarDragged = false;
 
   // Physics controller
-  var physics = new AlchemyPhysics.PhysicsController(workspace, function (id) {
+  const physics = new AlchemyPhysics.PhysicsController(workspace, function (id) {
     return game.getElement(id);
   });
 

@@ -481,7 +481,6 @@ body {
 
   #workspace {
     height: 60vh;
-    flex: 1;
   }
 
   #clear-btn, #reset-btn {

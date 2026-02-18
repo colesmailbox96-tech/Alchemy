@@ -244,7 +244,7 @@ var AlchemyPhysics = (function () {
       for (var j = 0; j < bodiesArr.length; j++) {
         if (i === j) continue;
         var other = bodiesArr[j];
-        if (!other.settled && other.type !== 'solid') continue;
+        if (!other.settled) continue;
 
         var otherEl = other.el;
         var ox = parseFloat(otherEl.style.left) || 0;
