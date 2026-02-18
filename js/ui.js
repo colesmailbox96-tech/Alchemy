@@ -21,6 +21,7 @@
   const discoveryName = document.getElementById('discovery-name');
   const hintOverlay = document.getElementById('hint-overlay');
   const hintClose = document.getElementById('hint-close');
+  const progressBar = document.getElementById('progress-bar');
 
   // DOM references (reset button)
   const resetBtn = document.getElementById('reset-btn');
@@ -76,6 +77,7 @@
       const card = document.createElement('div');
       card.className = 'element-card';
       card.setAttribute('data-element-id', id);
+      card.setAttribute('data-category', el.category);
       card.draggable = true;
       card.innerHTML = '<span class="emoji">' + el.emoji + '</span><span class="name">' + escapeHtml(el.name) + '</span>';
       sidebar.appendChild(card);
@@ -99,6 +101,8 @@
 
   function updateDiscoveredCount() {
     discoveredCountEl.textContent = game.discoveredCount;
+    var pct = (game.discoveredCount / game.totalElements) * 100;
+    progressBar.style.width = pct + '%';
   }
 
   // ===== Workspace Element Creation =====
