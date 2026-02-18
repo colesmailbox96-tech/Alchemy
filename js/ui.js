@@ -22,11 +22,18 @@
   const hintOverlay = document.getElementById('hint-overlay');
   const hintClose = document.getElementById('hint-close');
 
+  // DOM references (reset button)
+  const resetBtn = document.getElementById('reset-btn');
+
   // State
   let draggedEl = null;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
   let workspaceIdCounter = 0;
+  let sidebarDragEl = null;
+  let sidebarDragClone = null;
+  let sidebarDragElementId = null;
+  let sidebarDragged = false;
 
   // ===== Initialization =====
   function init() {
@@ -115,7 +122,7 @@
 
   // ===== Drag & Drop from Sidebar =====
   function setupEventListeners() {
-    // Sidebar drag start
+    // Sidebar drag start (HTML5 drag API fallback)
     sidebar.addEventListener('dragstart', function (e) {
       var card = e.target.closest('.element-card');
       if (!card) return;
@@ -123,13 +130,13 @@
       e.dataTransfer.effectAllowed = 'copy';
     });
 
-    // Workspace: allow drop
+    // Workspace: allow drop (HTML5 drag API fallback)
     workspace.addEventListener('dragover', function (e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
     });
 
-    // Workspace: handle drop from sidebar
+    // Workspace: handle drop from sidebar (HTML5 drag API fallback)
     workspace.addEventListener('drop', function (e) {
       e.preventDefault();
       var elementId = e.dataTransfer.getData('text/plain');
@@ -137,6 +144,24 @@
       var rect = workspace.getBoundingClientRect();
       var x = e.clientX - rect.left - 40;
       var y = e.clientY - rect.top - 16;
+      createWorkspaceElement(elementId, x, y);
+    });
+
+    // Sidebar: pointer-based drag for reliable cross-browser and touch support
+    sidebar.addEventListener('pointerdown', onSidebarPointerDown);
+    document.addEventListener('pointermove', onSidebarPointerMove);
+    document.addEventListener('pointerup', onSidebarPointerUp);
+
+    // Sidebar: click to add element to workspace
+    sidebar.addEventListener('click', function (e) {
+      if (sidebarDragged) { sidebarDragged = false; return; }
+      var card = e.target.closest('.element-card');
+      if (!card) return;
+      var elementId = card.getAttribute('data-element-id');
+      if (!elementId || !game.getElement(elementId)) return;
+      var wsRect = workspace.getBoundingClientRect();
+      var x = wsRect.width / 2 - 40 + (Math.random() * 80 - 40);
+      var y = wsRect.height / 2 - 16 + (Math.random() * 80 - 40);
       createWorkspaceElement(elementId, x, y);
     });
 
@@ -156,6 +181,16 @@
       workspace.innerHTML = '';
     });
 
+    // Reset game
+    resetBtn.addEventListener('click', function () {
+      if (confirm('Reset all progress? This will remove all discovered elements.')) {
+        game.reset();
+        workspace.innerHTML = '';
+        updateDiscoveredCount();
+        renderSidebar();
+      }
+    });
+
     // Discovery popup dismiss
     discoveryPopup.addEventListener('click', function () {
       discoveryPopup.classList.add('hidden');
@@ -166,6 +201,59 @@
       hintOverlay.classList.add('hidden');
       localStorage.setItem('alchemy-hint-seen', '1');
     });
+  }
+
+  // ===== Sidebar Pointer Drag =====
+  function onSidebarPointerDown(e) {
+    var card = e.target.closest('.element-card');
+    if (!card) return;
+    e.preventDefault();
+    sidebarDragElementId = card.getAttribute('data-element-id');
+    sidebarDragEl = card;
+    dragOffsetX = e.clientX - card.getBoundingClientRect().left;
+    dragOffsetY = e.clientY - card.getBoundingClientRect().top;
+  }
+
+  function onSidebarPointerMove(e) {
+    if (!sidebarDragEl) return;
+
+    if (!sidebarDragClone) {
+      // Create floating clone once pointer moves
+      sidebarDragged = true;
+      sidebarDragClone = sidebarDragEl.cloneNode(true);
+      sidebarDragClone.className = 'workspace-element dragging';
+      sidebarDragClone.style.position = 'fixed';
+      sidebarDragClone.style.pointerEvents = 'none';
+      sidebarDragClone.style.zIndex = '10001';
+      sidebarDragClone.style.margin = '0';
+      var removeBtn = sidebarDragClone.querySelector('.remove-btn');
+      if (removeBtn) removeBtn.remove();
+      document.body.appendChild(sidebarDragClone);
+    }
+
+    sidebarDragClone.style.left = (e.clientX - dragOffsetX) + 'px';
+    sidebarDragClone.style.top = (e.clientY - dragOffsetY) + 'px';
+  }
+
+  function onSidebarPointerUp(e) {
+    if (!sidebarDragEl) return;
+
+    if (sidebarDragClone) {
+      sidebarDragClone.remove();
+      sidebarDragClone = null;
+
+      // Check if dropped over workspace
+      var wsRect = workspace.getBoundingClientRect();
+      if (e.clientX >= wsRect.left && e.clientX <= wsRect.right &&
+          e.clientY >= wsRect.top && e.clientY <= wsRect.bottom) {
+        var x = e.clientX - wsRect.left - 40;
+        var y = e.clientY - wsRect.top - 16;
+        createWorkspaceElement(sidebarDragElementId, x, y);
+      }
+    }
+
+    sidebarDragEl = null;
+    sidebarDragElementId = null;
   }
 
   // ===== Workspace Element Dragging =====
@@ -273,6 +361,7 @@
         showDiscovery(result.result);
         updateDiscoveredCount();
         renderSidebar();
+        highlightNewDiscovery(result.result);
       }
     }
     // If no recipe exists, elements just stay where they are
@@ -289,6 +378,13 @@
     setTimeout(function () {
       discoveryPopup.classList.add('hidden');
     }, 1500);
+  }
+
+  function highlightNewDiscovery(elementId) {
+    var card = sidebar.querySelector('.element-card[data-element-id="' + elementId + '"]');
+    if (card) {
+      card.classList.add('new-discovery');
+    }
   }
 
   // ===== Utilities =====
