@@ -2,6 +2,20 @@
 
 A browser-based element crafting game inspired by Little Alchemy 2. Discover **748 elements** by combining them together, starting from just four basic elements: Water, Fire, Earth, and Air.
 
+## Potential Pivot Direction
+
+### **Idle / Merge Shop Tycoon (Web + iOS + Steam)**
+
+If you decide to rebuild from scratch instead of continuing Alchemy, this is a high-demand concept that fits the repo's web-first stack.
+Build a cozy tycoon where players merge items (ingredients, tools, or products), automate production lines, and optimize profit through upgrades and limited-time events.
+
+- **In demand:** idle + merge + management loops have strong retention in mobile and desktop casual markets.
+- **Monetizable:** ad rewards (web/mobile), cosmetic packs, battle pass/event pass, optional premium starter bundles, and DLC-style content on Steam.
+- **No fancy App Store approvals required to launch early:** ship first as a browser game/PWA (works in Safari on iOS), then wrap later for stores.
+- **Runs on iOS and desktop:** responsive web UI with pointer/touch controls.
+- **Scalable content model:** new item trees, maps, events, automation machines, seasonal themes, and social features can be added incrementally.
+- **Steam-ready path:** package web build in Electron/Tauri for desktop distribution and achievements/cloud save integration later.
+
 ## Getting Started
 
 ```bash
