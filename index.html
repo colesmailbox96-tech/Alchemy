@@ -17,6 +17,9 @@
       <div id="stats">
         <span id="discovered-count">4</span> / <span id="total-count">0</span> discovered
       </div>
+      <div id="progress-bar-container">
+        <div id="progress-bar" style="width: 0%"></div>
+      </div>
       <div id="search-bar">
         <input type="text" id="search-input" placeholder="Search elements..." autocomplete="off">
       </div>
@@ -32,8 +35,10 @@
   <!-- Main workspace -->
   <main id="workspace">
     <div id="workspace-area"></div>
-    <div id="clear-btn" title="Clear workspace">🗑️ Clear</div>
-    <div id="reset-btn" title="Reset all progress">🔄 Reset</div>
+    <div id="workspace-toolbar">
+      <button class="toolbar-btn danger" id="reset-btn" title="Reset all progress">🔄 Reset</button>
+      <button class="toolbar-btn" id="clear-btn" title="Clear workspace">🗑️ Clear</button>
+    </div>
   </main>
 
   <!-- Discovery popup -->
