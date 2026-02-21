@@ -1,6 +1,7 @@
 /**
  * UI controller for Alchemy game.
- * Handles drag-and-drop, sidebar rendering, and discovery animations.
+ * Sand-pouring simulation: select material from sidebar, pour particles on canvas.
+ * Reaction zone detects combinations and triggers recipe results.
  */
 (function () {
   'use strict';
@@ -11,6 +12,7 @@
   // DOM references
   const sidebar = document.getElementById('element-list');
   const workspace = document.getElementById('workspace-area');
+  const sandCanvas = document.getElementById('sand-arena');
   const searchInput = document.getElementById('search-input');
   const categorySelect = document.getElementById('category-select');
   const discoveredCountEl = document.getElementById('discovered-count');
@@ -22,26 +24,75 @@
   const hintOverlay = document.getElementById('hint-overlay');
   const hintClose = document.getElementById('hint-close');
   const progressBar = document.getElementById('progress-bar');
-
-  // DOM references (reset button)
   const resetBtn = document.getElementById('reset-btn');
   const sidebarToggle = document.getElementById('sidebar-toggle');
   const sidebarEl = document.getElementById('sidebar');
+  const togglePourBtn = document.getElementById('toggle-pour-btn');
+  const debugBtn = document.getElementById('debug-btn');
+  const selectedMaterialEl = document.getElementById('selected-material');
+  const selectedEmojiEl = document.getElementById('selected-emoji');
+  const selectedNameEl = document.getElementById('selected-name');
 
-  // State
-  let draggedEl = null;
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
-  let workspaceIdCounter = 0;
-  let sidebarDragEl = null;
-  let sidebarDragClone = null;
-  let sidebarDragElementId = null;
-  let sidebarDragged = false;
+  // ===== Material Color Map =====
+  // Map category -> particle color
+  var CATEGORY_COLORS = {
+    basic: '#7c5cfc',
+    nature: '#22c55e',
+    life: '#f472b6',
+    animal: '#fb923c',
+    plant: '#4ade80',
+    human: '#e879f9',
+    tool: '#94a3b8',
+    material: '#a78bfa',
+    food: '#fbbf24',
+    weather: '#38bdf8',
+    space: '#818cf8',
+    myth: '#c084fc',
+    science: '#2dd4bf',
+    place: '#f97316',
+    concept: '#f43f5e',
+    technology: '#06b6d4'
+  };
 
-  // Physics controller
-  const physics = new AlchemyPhysics.PhysicsController(workspace, function (id) {
-    return game.getElement(id);
-  });
+  // Override colors for the 4 starting elements for visual clarity
+  var ELEMENT_COLORS = {
+    water: '#2196f3',
+    fire: '#ff5722',
+    earth: '#8d6e63',
+    air: '#b0bec5'
+  };
+
+  function getMaterialColor(elementId) {
+    if (ELEMENT_COLORS[elementId]) return ELEMENT_COLORS[elementId];
+    var el = game.getElement(elementId);
+    if (el && CATEGORY_COLORS[el.category]) return CATEGORY_COLORS[el.category];
+    return '#ffffff';
+  }
+
+  // ===== Sand Simulation State =====
+  var sim = new AlchemyParticleSim.ParticleSim();
+  var renderer = new AlchemyArenaRenderer.ArenaRenderer(sandCanvas);
+  var input = new AlchemyInputController.InputController(sandCanvas, renderer);
+  var reactionEngine = new AlchemyReactionEngine.ReactionEngine(game, sim);
+
+  // Active material selection
+  var activeMaterialId = null;
+  var activeMaterialColor = '#ffffff';
+
+  // Spawn rate & performance
+  var SPAWN_RATE = 4; // particles per frame when pouring
+  var SPAWN_SPREAD = 6; // random spread from spout position
+
+  // FPS tracking
+  var showDebug = false;
+  var fpsFrames = 0;
+  var fpsTime = 0;
+  var currentFps = 60;
+  var FPS_LOW_THRESHOLD = 30;
+  var degradedMode = false;
+
+  // Animation
+  var animFrameId = null;
 
   // ===== Initialization =====
   function init() {
@@ -51,6 +102,129 @@
     renderSidebar();
     setupEventListeners();
     showHintIfFirstVisit();
+    initSandSim();
+  }
+
+  function initSandSim() {
+    // Size canvas
+    renderer.resize();
+    sim.setArenaBounds(renderer.width, renderer.height);
+
+    // Set up reaction zone (center-bottom of arena)
+    var zoneW = renderer.width * 0.4;
+    var zoneH = renderer.height * 0.3;
+    var zoneX = (renderer.width - zoneW) / 2;
+    var zoneY = renderer.height - zoneH - 4;
+    reactionEngine.setZone(zoneX, zoneY, zoneW, zoneH);
+    renderer.reactionZone = { x: zoneX, y: zoneY, w: zoneW, h: zoneH };
+
+    // Reaction callback
+    reactionEngine.onReaction = function (resultId, isNew) {
+      if (isNew) {
+        showDiscovery(resultId);
+        updateDiscoveredCount();
+        renderSidebar();
+        highlightNewDiscovery(resultId);
+      }
+      // Spawn some result particles for visual flair
+      var resultColor = getMaterialColor(resultId);
+      var cx = renderer.width / 2;
+      var cy = renderer.height * 0.7;
+      for (var i = 0; i < 15; i++) {
+        sim.spawn(
+          cx + (Math.random() - 0.5) * 40,
+          cy + (Math.random() - 0.5) * 20,
+          (Math.random() - 0.5) * 3,
+          -Math.random() * 2,
+          resultId,
+          resultColor
+        );
+      }
+    };
+
+    // Select first starting element by default
+    selectMaterial('water');
+
+    // Start animation loop
+    startLoop();
+  }
+
+  function startLoop() {
+    fpsTime = performance.now();
+    animFrameId = requestAnimationFrame(tick);
+  }
+
+  // ===== Main Animation Loop =====
+  function tick(now) {
+    animFrameId = requestAnimationFrame(tick);
+
+    // FPS tracking
+    fpsFrames++;
+    var elapsed = now - fpsTime;
+    if (elapsed >= 1000) {
+      currentFps = Math.round(fpsFrames * 1000 / elapsed);
+      fpsFrames = 0;
+      fpsTime = now;
+
+      // Adaptive quality: degrade if FPS is low
+      if (currentFps < FPS_LOW_THRESHOLD && !degradedMode) {
+        degradedMode = true;
+        SPAWN_RATE = 2;
+      } else if (currentFps >= 50 && degradedMode) {
+        degradedMode = false;
+        SPAWN_RATE = 4;
+      }
+    }
+
+    // Spawn particles if pouring
+    if (input.isPouring && activeMaterialId) {
+      var rate = degradedMode ? 2 : SPAWN_RATE;
+      for (var i = 0; i < rate; i++) {
+        sim.spawn(
+          input.spoutX + (Math.random() - 0.5) * SPAWN_SPREAD,
+          input.spoutY + (Math.random() - 0.5) * SPAWN_SPREAD,
+          (Math.random() - 0.5) * 0.5,
+          Math.random() * 1.5 + 0.5,
+          activeMaterialId,
+          activeMaterialColor
+        );
+      }
+    }
+
+    // Physics update
+    sim.update();
+
+    // Reaction check
+    reactionEngine.update();
+
+    // Render
+    var spout = input.getSpoutState(activeMaterialColor);
+    renderer.draw(sim, spout);
+
+    // Debug overlay (drawn at low frequency to avoid DOM thrash)
+    if (showDebug) {
+      renderer.drawDebug(currentFps, sim.activeCount, sim.config.MAX_PARTICLES);
+    }
+  }
+
+  // ===== Material Selection =====
+  function selectMaterial(elementId) {
+    activeMaterialId = elementId;
+    activeMaterialColor = getMaterialColor(elementId);
+
+    var el = game.getElement(elementId);
+    if (el) {
+      selectedEmojiEl.textContent = el.emoji;
+      selectedNameEl.textContent = el.name;
+      selectedMaterialEl.classList.remove('hidden');
+    }
+
+    // Update sidebar highlight
+    var cards = sidebar.querySelectorAll('.element-card');
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].classList.toggle('selected',
+        cards[i].getAttribute('data-element-id') === elementId);
+    }
   }
 
   function showHintIfFirstVisit() {
@@ -76,9 +250,9 @@
       const el = game.getElement(id);
       const card = document.createElement('div');
       card.className = 'element-card';
+      if (id === activeMaterialId) card.className += ' selected';
       card.setAttribute('data-element-id', id);
       card.setAttribute('data-category', el.category);
-      card.draggable = true;
       card.innerHTML = '<span class="emoji">' + el.emoji + '</span><span class="name">' + escapeHtml(el.name) + '</span>';
       sidebar.appendChild(card);
     }
@@ -122,86 +296,16 @@
     progressBar.style.width = pct + '%';
   }
 
-  // ===== Workspace Element Creation =====
-  function createWorkspaceElement(elementId, x, y) {
-    const el = game.getElement(elementId);
-    if (!el) return null;
-
-    const div = document.createElement('div');
-    div.className = 'workspace-element';
-    div.setAttribute('data-element-id', elementId);
-    div.setAttribute('data-workspace-id', ++workspaceIdCounter);
-    div.style.left = x + 'px';
-    div.style.top = y + 'px';
-    div.innerHTML =
-      '<span class="emoji">' + el.emoji + '</span>' +
-      '<span class="name">' + escapeHtml(el.name) + '</span>' +
-      '<button class="remove-btn" title="Remove">✕</button>';
-
-    // Remove button
-    div.querySelector('.remove-btn').addEventListener('click', function (e) {
-      e.stopPropagation();
-      physics.removeBody(div);
-      div.remove();
-    });
-
-    workspace.appendChild(div);
-
-    // Register with physics
-    physics.addBody(div);
-
-    return div;
-  }
-
-  // ===== Drag & Drop from Sidebar =====
+  // ===== Event Listeners =====
   function setupEventListeners() {
-    // Sidebar drag start (HTML5 drag API fallback)
-    sidebar.addEventListener('dragstart', function (e) {
-      var card = e.target.closest('.element-card');
-      if (!card) return;
-      e.dataTransfer.setData('text/plain', card.getAttribute('data-element-id'));
-      e.dataTransfer.effectAllowed = 'copy';
-    });
-
-    // Workspace: allow drop (HTML5 drag API fallback)
-    workspace.addEventListener('dragover', function (e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-    });
-
-    // Workspace: handle drop from sidebar (HTML5 drag API fallback)
-    workspace.addEventListener('drop', function (e) {
-      e.preventDefault();
-      var elementId = e.dataTransfer.getData('text/plain');
-      if (!elementId || !game.getElement(elementId)) return;
-      var rect = workspace.getBoundingClientRect();
-      var x = e.clientX - rect.left - 40;
-      var y = e.clientY - rect.top - 16;
-      createWorkspaceElement(elementId, x, y);
-    });
-
-    // Sidebar: pointer-based drag for reliable cross-browser and touch support
-    sidebar.addEventListener('pointerdown', onSidebarPointerDown);
-    document.addEventListener('pointermove', onSidebarPointerMove);
-    document.addEventListener('pointerup', onSidebarPointerUp);
-
-    // Sidebar: click to add element to workspace
+    // Sidebar: click to select material for pouring
     sidebar.addEventListener('click', function (e) {
-      if (sidebarDragged) { sidebarDragged = false; return; }
       var card = e.target.closest('.element-card');
       if (!card) return;
       var elementId = card.getAttribute('data-element-id');
       if (!elementId || !game.getElement(elementId)) return;
-      var wsRect = workspace.getBoundingClientRect();
-      var x = wsRect.width / 2 - 40 + (Math.random() * 80 - 40);
-      var y = wsRect.height / 2 - 16 + (Math.random() * 80 - 40);
-      createWorkspaceElement(elementId, x, y);
+      selectMaterial(elementId);
     });
-
-    // Workspace element dragging (pointer events)
-    workspace.addEventListener('pointerdown', onWorkspacePointerDown);
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
 
     // Search
     searchInput.addEventListener('input', renderSidebar);
@@ -209,21 +313,37 @@
     // Category filter
     categorySelect.addEventListener('change', renderSidebar);
 
-    // Clear workspace
+    // Clear workspace (clear all particles)
     clearBtn.addEventListener('click', function () {
-      physics.clearAll();
-      workspace.innerHTML = '';
+      sim.clearAll();
+      reactionEngine.reset();
     });
 
     // Reset game
     resetBtn.addEventListener('click', function () {
       if (confirm('Reset all progress? This will remove all discovered elements.')) {
         game.reset();
-        physics.clearAll();
-        workspace.innerHTML = '';
+        sim.clearAll();
+        reactionEngine.reset();
         updateDiscoveredCount();
         renderSidebar();
+        selectMaterial('water');
       }
+    });
+
+    // Toggle pour mode (tap-to-toggle)
+    togglePourBtn.addEventListener('click', function () {
+      input.toggleMode = !input.toggleMode;
+      togglePourBtn.classList.toggle('active', input.toggleMode);
+      if (!input.toggleMode) {
+        input.isPouring = false;
+      }
+    });
+
+    // Debug toggle
+    debugBtn.addEventListener('click', function () {
+      showDebug = !showDebug;
+      debugBtn.classList.toggle('active', showDebug);
     });
 
     // Discovery popup dismiss
@@ -241,178 +361,19 @@
     sidebarToggle.addEventListener('click', function () {
       sidebarEl.classList.toggle('collapsed');
     });
-  }
 
-  // ===== Sidebar Pointer Drag =====
-  function onSidebarPointerDown(e) {
-    var card = e.target.closest('.element-card');
-    if (!card) return;
-    e.preventDefault();
-    sidebarDragElementId = card.getAttribute('data-element-id');
-    sidebarDragEl = card;
-    dragOffsetX = e.clientX - card.getBoundingClientRect().left;
-    dragOffsetY = e.clientY - card.getBoundingClientRect().top;
-  }
-
-  function onSidebarPointerMove(e) {
-    if (!sidebarDragEl) return;
-
-    if (!sidebarDragClone) {
-      // Create floating clone once pointer moves
-      sidebarDragged = true;
-      sidebarDragClone = sidebarDragEl.cloneNode(true);
-      sidebarDragClone.className = 'workspace-element dragging';
-      sidebarDragClone.style.position = 'fixed';
-      sidebarDragClone.style.pointerEvents = 'none';
-      sidebarDragClone.style.zIndex = '10001';
-      sidebarDragClone.style.margin = '0';
-      var removeBtn = sidebarDragClone.querySelector('.remove-btn');
-      if (removeBtn) removeBtn.remove();
-      document.body.appendChild(sidebarDragClone);
-    }
-
-    sidebarDragClone.style.left = (e.clientX - dragOffsetX) + 'px';
-    sidebarDragClone.style.top = (e.clientY - dragOffsetY) + 'px';
-  }
-
-  function onSidebarPointerUp(e) {
-    if (!sidebarDragEl) return;
-
-    if (sidebarDragClone) {
-      sidebarDragClone.remove();
-      sidebarDragClone = null;
-
-      // Check if dropped over workspace
-      var wsRect = workspace.getBoundingClientRect();
-      if (e.clientX >= wsRect.left && e.clientX <= wsRect.right &&
-          e.clientY >= wsRect.top && e.clientY <= wsRect.bottom) {
-        var x = e.clientX - wsRect.left - 40;
-        var y = e.clientY - wsRect.top - 16;
-        createWorkspaceElement(sidebarDragElementId, x, y);
-      }
-    }
-
-    sidebarDragEl = null;
-    sidebarDragElementId = null;
-  }
-
-  // ===== Workspace Element Dragging =====
-  function onWorkspacePointerDown(e) {
-    var el = e.target.closest('.workspace-element');
-    if (!el || e.target.closest('.remove-btn')) return;
-
-    draggedEl = el;
-    draggedEl.classList.add('dragging');
-    draggedEl.setPointerCapture(e.pointerId);
-
-    // Pause physics while dragging
-    physics.setDragging(el, true);
-
-    var rect = el.getBoundingClientRect();
-    dragOffsetX = e.clientX - rect.left;
-    dragOffsetY = e.clientY - rect.top;
-
-    // Bring to front
-    draggedEl.style.zIndex = 1000;
-  }
-
-  function onPointerMove(e) {
-    if (!draggedEl) return;
-
-    var wsRect = workspace.getBoundingClientRect();
-    var x = e.clientX - wsRect.left - dragOffsetX;
-    var y = e.clientY - wsRect.top - dragOffsetY;
-
-    // Clamp within workspace
-    x = Math.max(0, Math.min(wsRect.width - draggedEl.offsetWidth, x));
-    y = Math.max(0, Math.min(wsRect.height - draggedEl.offsetHeight, y));
-
-    draggedEl.style.left = x + 'px';
-    draggedEl.style.top = y + 'px';
-
-    // Highlight potential merge target
-    highlightOverlapping(draggedEl);
-  }
-
-  function onPointerUp(e) {
-    if (!draggedEl) return;
-
-    draggedEl.classList.remove('dragging');
-    var target = findOverlapping(draggedEl);
-
-    if (target) {
-      target.classList.remove('highlight');
-      tryCombine(draggedEl, target);
-    } else {
-      // Resume physics after drop
-      physics.setDragging(draggedEl, false);
-    }
-
-    draggedEl.style.zIndex = '';
-    draggedEl = null;
-  }
-
-  // ===== Overlap Detection =====
-  function findOverlapping(el) {
-    var rect1 = el.getBoundingClientRect();
-    var children = workspace.querySelectorAll('.workspace-element');
-    for (var i = 0; i < children.length; i++) {
-      var child = children[i];
-      if (child === el) continue;
-      var rect2 = child.getBoundingClientRect();
-      if (rectsOverlap(rect1, rect2)) {
-        return child;
-      }
-    }
-    return null;
-  }
-
-  function highlightOverlapping(el) {
-    var children = workspace.querySelectorAll('.workspace-element');
-    for (var i = 0; i < children.length; i++) {
-      children[i].classList.remove('highlight');
-    }
-    var target = findOverlapping(el);
-    if (target) {
-      target.classList.add('highlight');
-    }
-  }
-
-  function rectsOverlap(r1, r2) {
-    return !(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom);
-  }
-
-  // ===== Combination Logic =====
-  function tryCombine(el1, el2) {
-    var id1 = el1.getAttribute('data-element-id');
-    var id2 = el2.getAttribute('data-element-id');
-    var result = game.combine(id1, id2);
-
-    if (result.result) {
-      // Get position for new element (midpoint)
-      var r1 = el1.getBoundingClientRect();
-      var r2 = el2.getBoundingClientRect();
-      var wsRect = workspace.getBoundingClientRect();
-      var mx = ((r1.left + r2.left) / 2) - wsRect.left;
-      var my = ((r1.top + r2.top) / 2) - wsRect.top;
-
-      // Remove the two elements (and their physics bodies)
-      physics.removeBody(el1);
-      physics.removeBody(el2);
-      el1.remove();
-      el2.remove();
-
-      // Create result element
-      createWorkspaceElement(result.result, mx, my);
-
-      if (result.isNew) {
-        showDiscovery(result.result);
-        updateDiscoveredCount();
-        renderSidebar();
-        highlightNewDiscovery(result.result);
-      }
-    }
-    // If no recipe exists, elements just stay where they are
+    // Window resize
+    window.addEventListener('resize', function () {
+      renderer.resize();
+      sim.setArenaBounds(renderer.width, renderer.height);
+      // Update reaction zone
+      var zoneW = renderer.width * 0.4;
+      var zoneH = renderer.height * 0.3;
+      var zoneX = (renderer.width - zoneW) / 2;
+      var zoneY = renderer.height - zoneH - 4;
+      reactionEngine.setZone(zoneX, zoneY, zoneW, zoneH);
+      renderer.reactionZone = { x: zoneX, y: zoneY, w: zoneW, h: zoneH };
+    });
   }
 
   // ===== Discovery Popup =====
@@ -449,3 +410,4 @@
   // Start
   init();
 })();
+

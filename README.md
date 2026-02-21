@@ -2,6 +2,36 @@
 
 A browser-based element crafting game inspired by Little Alchemy 2. Discover **748 elements** by combining them together, starting from just four basic elements: Water, Fire, Earth, and Air.
 
+## How It Works – Sand Pouring Simulation
+
+Instead of drag-and-drop, Alchemy uses a **sand-pouring particle simulation**:
+
+1. **Select a material** from the sidebar (tap/click an element card)
+2. **Press & hold** on the arena canvas to pour granular particles from a spout at your finger/cursor position
+3. Particles fall with gravity, pile up, and bounce off walls
+4. **Mix two materials** in the **Reaction Zone** (dashed rectangle at the bottom-center) – when enough particles of 2+ materials coexist, a recipe triggers automatically
+5. **Discover new elements** – they appear in the sidebar and become available for pouring
+
+### Controls
+- **Single finger / mouse**: move spout position
+- **Press & hold**: pour particles
+- **Toggle Pour button**: tap-to-toggle pour mode (accessibility)
+- **Clear button**: remove all particles
+- **Debug button**: show FPS & particle counter
+
+### Tuning Knobs
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `MAX_PARTICLES` | 8000 | Maximum number of particles in the pool |
+| `SPAWN_RATE` | 4 | Particles spawned per frame while pouring |
+| `REACTION_THRESHOLD` | 30 | Particles per material needed to trigger a recipe |
+| `COOLDOWN_FRAMES` | 60 | Cooldown between same-recipe triggers (~1s at 60fps) |
+| `CHECK_INTERVAL` | 6 | Frames between reaction zone checks |
+| `GRID_CELL_SIZE` | 8 | Spatial hash cell size for collision detection |
+| `resolutionScale` | ~0.65×DPR | Canvas internal resolution scaling for iOS perf |
+
+These can be adjusted by modifying `js/particleSim.js` (particle config), `js/reactionEngine.js` (reaction config), and `js/arenaRenderer.js` (resolution scale).
+
 ## Potential Pivot Direction
 
 ### **Idle / Merge Shop Tycoon (Web + iOS + Steam)**
@@ -28,19 +58,23 @@ Then open [http://localhost:3000](http://localhost:3000) in your browser.
 ## How to Play
 
 1. **Open the app** in your browser (via `npm run dev` or by opening `index.html` directly)
-2. **Drag elements** from the sidebar onto the workspace
-3. **Combine elements** by dragging one workspace element onto another
-4. **Discover new elements** — they appear in the sidebar when found
-5. Use **Search** and **Category filters** to find discovered elements
+2. **Select an element** from the sidebar by tapping/clicking it
+3. **Press & hold** on the arena to pour particles of the selected material
+4. **Mix materials** in the Reaction Zone (dashed area at bottom) to trigger recipes
+5. **Discover new elements** — they appear in the sidebar and can be poured
+6. Use **Search** and **Category filters** to find discovered elements
 
 ## Features
 
 - 🔬 **748 elements** across 16 categories
 - 🧩 **747 recipes** — every element is reachable from the 4 starting elements
+- 🏖️ **Sand-pouring simulation** — pour particles, mix materials, trigger reactions
+- ⚗️ **Reaction zone** — automatic recipe detection when materials mix
+- 📊 **Debug panel** — FPS counter & particle count toggle
+- 📱 **iOS-optimized** — resolution scaling, touch controls, adaptive quality
 - 💾 **Auto-save** — progress is saved in your browser's localStorage
 - 🔍 **Search & filter** — find elements by name or category
 - ✨ **Discovery animations** — celebrate each new element found
-- 📱 **Responsive design** — works on desktop and mobile
 - 🚀 **No dependencies** — pure HTML, CSS, and JavaScript
 
 ## Categories
@@ -73,18 +107,32 @@ npm test
 ## Project Structure
 
 ```
-├── index.html          # Main HTML page
-├── package.json        # Dev dependencies and scripts
-├── css/style.css       # Game styling
-├── js/game.js          # Game engine (combination logic, persistence)
-├── js/ui.js            # UI controller (drag-and-drop, rendering)
-├── data/elements.js    # Element and recipe definitions
-└── tests/game.test.js  # Game engine tests
+├── index.html              # Main HTML page with canvas arena
+├── package.json            # Dev dependencies and scripts
+├── css/style.css           # Game styling
+├── js/
+│   ├── game.js             # Game engine (combination logic, persistence)
+│   ├── ui.js               # UI controller (sand sim integration, sidebar)
+│   ├── physics.js           # Legacy physics (element gravity/stacking)
+│   ├── particleSim.js       # Particle simulation (pooling, spatial hash, gravity)
+│   ├── arenaRenderer.js     # Canvas2D renderer (resolution scaling)
+│   ├── inputController.js   # Touch/pointer input (spout, pour controls)
+│   └── reactionEngine.js    # Reaction zone (recipe triggering)
+├── data/elements.js         # Element and recipe definitions (748 elements)
+└── tests/
+    ├── game.test.js         # Game engine tests
+    ├── physics.test.js      # Physics classification tests
+    └── reaction.test.js     # Particle sim + reaction engine tests
 ```
 
 ## Technical Details
 
 - **No build step** — open `index.html` directly in a browser
 - **No external dependencies** — everything is self-contained
+- **Canvas2D particle simulation** — up to 8000 particles with object pooling
+- **Spatial hash grid** — efficient neighbor detection for pile approximation
+- **Resolution scaling** — internal canvas resolution adapts to device pixel ratio
+- **Adaptive quality** — spawn rate decreases if FPS drops below threshold
 - **LocalStorage** — game progress persists between sessions
-- **Pointer Events API** — smooth drag-and-drop on touch and mouse devices
+- **Pointer Events API** — unified touch and mouse controls
+- **iOS Safari optimized** — no layout thrash in render loop, touch-action: none

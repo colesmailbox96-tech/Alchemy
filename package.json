@@ -4,7 +4,7 @@
   "description": "A browser-based element crafting game inspired by Little Alchemy 2. Discover **748 elements** by combining them together, starting from just four basic elements: Water, Fire, Earth, and Air.",
   "scripts": {
     "dev": "serve .",
-    "test": "node tests/game.test.js"
+    "test": "node tests/game.test.js && node tests/physics.test.js && node tests/reaction.test.js"
   },
   "repository": {
     "type": "git",
