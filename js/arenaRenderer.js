@@ -110,7 +110,7 @@ var AlchemyArenaRenderer = (function () {
       for (var j = 0; j < group.length; j++) {
         var pp = group[j];
         ctx.moveTo(pp.x + pp.radius, pp.y);
-        ctx.arc(pp.x, pp.y, pp.radius, 0, 6.283185307);
+        ctx.arc(pp.x, pp.y, pp.radius, 0, Math.PI * 2);
       }
       ctx.fill();
     }
@@ -135,7 +135,7 @@ var AlchemyArenaRenderer = (function () {
       ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(spout.x, spout.y, 5, 0, 6.283185307);
+      ctx.arc(spout.x, spout.y, 5, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }

@@ -253,7 +253,7 @@
       if (id === activeMaterialId) card.className += ' selected';
       card.setAttribute('data-element-id', id);
       card.setAttribute('data-category', el.category);
-      card.innerHTML = '<span class="emoji">' + el.emoji + '</span><span class="name">' + escapeHtml(el.name) + '</span>';
+      card.innerHTML = '<span class="emoji">' + escapeHtml(el.emoji) + '</span><span class="name">' + escapeHtml(el.name) + '</span>';
       sidebar.appendChild(card);
     }
   }
